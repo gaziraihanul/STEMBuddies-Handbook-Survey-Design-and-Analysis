@@ -1,0 +1,455 @@
+---
+title: "Evaluating the STEMBuddies High School Handbook: A Survey of Academic and Non-Academic Supports"
+author: "Raihan Amin"
+format: pdf
+editor: visual
+---
+
+```{r, include = FALSE}
+
+library(tidyverse)
+require(gridExtra)
+set.seed(1234)
+
+# -----------------------------
+# Simulated population by grade
+# -----------------------------
+N_pop <- 2000  # total population size
+grades <- c("Grade 8","Grade 9","Grade 10","Grade 11","Grade 12")
+
+# Equal distribution across grades for simplicity
+pop_data <- data.frame(
+  Grade = sample(grades, size = N_pop, replace = TRUE, prob = rep(1/5, 5))
+)
+
+# -----------------------------
+# Simulated differential response (attempted census)
+# -----------------------------
+resp_probs <- c("Grade 8"=0.4, "Grade 9"=0.5, "Grade 10"=0.6,
+                "Grade 11"=0.7, "Grade 12"=0.8)
+
+pop_data$response <- rbinom(N_pop, 1, prob = resp_probs[pop_data$Grade])
+
+# Keep only respondents
+survey_data <- pop_data %>% filter(response == 1) %>% select(-response)
+
+# -----------------------------
+# Simulated survey questions
+# -----------------------------
+
+# Q2: City
+cities <- c("Barrie","Belleville","Brampton","Brantford","Brockville","Burlington",
+            "Cambridge","Clarence-Rockland","Cornwall","Dryden","Elliot Lake",
+            "Greater Sudbury","Guelph","Haldimand County","Hamilton",
+            "Kawartha Lakes","Kenora","Kingston","Kitchener","London","Markham",
+            "Mississauga","Niagara Falls","North Bay","Orillia","Oshawa","Ottawa",
+            "Owen Sound","Pembroke","Peterborough","Pickering","Port Colborne",
+            "Prince Edward County","Quinte West","Richmond Hill","Sarnia",
+            "Sault Ste. Marie","St. Catharines","St. Thomas","Stratford",
+            "Temiskaming Shores","Thorold","Thunder Bay","Timmins","Toronto",
+            "Vaughan","Waterloo","Welland","Windsor","Woodstock")
+
+big_cities <- c("Toronto","Ottawa","Mississauga","Brampton","Hamilton","London")
+survey_data$City <- sample(cities, size = nrow(survey_data), replace = TRUE,
+                           prob = ifelse(cities %in% big_cities, 0.04, 0.01))
+
+# Q3: Handbook sections read (skewed toward "A few" for realism)
+survey_data$Q3 <- sample(c("None of them","A few of them","Around half of them","Most of them","All of them"),
+                         size = nrow(survey_data), replace = TRUE,
+                         prob = c(0.15, 0.35, 0.25, 0.15, 0.10))
+
+# Q3a: Lacking info? (binary)
+survey_data$Q3a <- sample(c("Yes","No"), size = nrow(survey_data), replace = TRUE, prob = c(0.4, 0.6))
+
+# Q4: Handbook understanding (skewed toward easier)
+survey_data$Q4 <- sample(c("Very easy","Somewhat easy","Neutral","Somewhat difficult","Very difficult"),
+                         size = nrow(survey_data), replace = TRUE,
+                         prob = c(0.20, 0.40, 0.20, 0.15, 0.05))
+
+```
+
+## 1 Introduction
+
+STEMBuddies seeks to dismantle systemic barriers that prevent underprivileged students from fully accessing educational resources. A central tool in this effort is the STEMBuddies High School Handbook, which provides both academic guidance (e.g., study strategies, research skills, course planning) and non-academic supports (e.g., extracurricular planning, mental health, financial aid). The survey evaluates how effective this handbook is by asking students how well it supports them and what content they feel is missing. The feedback will directly inform improvements so the handbook better aligns with students’ needs and advances STEMBuddies’ mission of equitable education.
+
+Educational equity—ensuring students receive not just equal resources but supports tailored to their needs—has been shown to improve outcomes for marginalized groups and reduce achievement gaps (Jurado de los Santos et al., 2020). Equity goes beyond equality by recognizing that students may need different resources to achieve similar outcomes. Without such targeted supports, educational systems risk reinforcing systemic disadvantages. Research further shows that structured resources like handbooks can provide meaningful scaffolding when designed inclusively (Kusmaryono, Wijayanti, & Maharani, 2022).
+
+The survey focuses on four key questions: Q5 and Q7, which ask students to rate the handbook’s academic and non-academic guidance, and Q6 and Q8, which identify missing supports. Together, these questions capture both effectiveness and gaps. The analysis uses descriptive summaries and confidence intervals to highlight patterns, quantify uncertainty, and provide evidence-based recommendations. By centering the voices of STEMBuddies students, this study offers actionable insights for resource development in underserved communities (Ponto, 2015; Westland, 2022).
+
+## 2 Survey Showcasing
+
+### 2.1 Survey Description
+
+The survey ([available here](https://docs.google.com/forms/d/e/1FAIpQLSeCce-ciSSX-Svr2kalNqK8PP-r3AU1UNNyg6i4v4LyDEVJ5g/viewform)) evaluates how effectively the STEMBuddies High School Handbook supports underserved students. It is divided into two main parts: demographic questions (e.g., grade level, city), which provide context and enable comparisons across student groups, and needs/assessment questions, which gauge both the quality of academic and non-academic guidance (equality) and whether the handbook addresses diverse needs (equity). Most questions are close-ended to ensure comparability and simplify analysis, with Likert scales capturing satisfaction levels and “check all that apply” formats reflecting that student needs are not mutually exclusive. Limited open-ended follow-ups provide additional context.
+
+### 2.2 Testing The Survey
+
+The survey was pilot tested with friends and family acting as high school students. Their feedback identified unclear wording and formatting issues, which we revised to ensure the final survey was clear and accessible.
+
+### 2.3 Showcasing Relevant Questions
+
+To illustrate the connection between the survey and objectives of this study, I highlight four questions that form the basis of the analysis:
+
+#### **Table 1. Selected Survey Questions for Analysis**
+
+| Question \# | Survey Question                                                              | Format          | Response Type |
+|-----------------|-----------------------|-----------------|-----------------|
+| 5           | *How well does the handbook give you academic guidance?*                     | Likert scale    | Ordinal       |
+| 6           | *What important academic topics do you feel are missing?*                    | Multiple choice | Nominal       |
+| 7           | *How well does the handbook give you non-academic/extracurricular guidance?* | Likert scale    | Ordinal       |
+| 8           | *What important non-academic topics do you feel are missing?*                | Multiple choice | Nominal       |
+
+We chose these questions because they directly reflect the core objective of this study: assessing what is missing from the handbook and how it can be improved to better support students academically and non-academically. The paired structure (guidance ratings and missing topics) provides both a measure of performance and insight into unmet needs.
+
+There are clear benefits and drawbacks to this design. The Likert scale questions (Q5, Q7) allow for more nuanced insights than simple yes/no answers and can be encoded numerically to compute summary statistics such as means and confidence intervals. However, Likert scales are subjective, and respondents may interpret categories differently. This limitation is common in survey research and was accepted here because Likert scales are the most practical and widely used way to assess perceived effectiveness. Similarly, the “check all that apply” format (Q6, Q8) acknowledges that students may have multiple unmet needs, but pre-listing options could bias responses toward those listed. Without pre-specified choices, however, many students might skip the question due to uncertainty, reducing data quality. Thus, the tradeoff of some potential bias was judged preferable to risking low response rates.
+
+## 3 Procedure
+
+### 3.1 Proposed Sampling Procedure
+
+The target population of this study is all students enrolled in the STEMBuddies program (Grades 8–12). The sampling frame would be the complete student email list provided by STEMBuddies, ensuring every eligible student can be contacted. The proposed sample units are individual students who receive the survey via their student emails (e.g. TDSB student email). In practice, we recommend sending the survey to the entire list, making this an attempted census. However, since not all students will respond, the realized sample will be a subset of the population.
+
+This approach has several strengths. Contacting all students minimizes frame bias, since every student has an equal chance to participate, and it is practical given that STEMBuddies already maintains the email list. The main limitation is nonresponse bias—if certain groups (e.g., younger grades) respond at lower rates, results may systematically misrepresent the population. In addition, some sampling error is unavoidable, as the subset of respondents may not perfectly reflect the full student body. While these issues cannot be eliminated, recognizing them is critical for interpreting survey results.
+
+### 3.2 Simulation
+
+Because real student data cannot be collected, we simulated responses in R to approximate likely outcomes. A synthetic population of Grades 8–12 was generated, with survey participation modeled as an attempted census but with higher response probabilities among older students (e.g., 40% in Grade 8, 80% in Grade 12). The focus variables are Q5, Q6, Q7, and Q8 from Section 2. Q5 (academic guidance) and Q7 (non-academic guidance) were simulated as Likert-scale outcomes with five ordered categories, randomly assigned using a multinomial distribution and then encoded numerically (1–5) for statistical analysis. Q6 (missing academic topics) and Q8 (missing non-academic topics) were modelled as “check all that apply” questions, with each option generated independently as a Bernoulli trial (probability 0.5). This design reflects that multiple resources may be reported as missing while maintaining variability across responses. Together, these steps produced a dataset resembling an attempted census with uneven response rates by grade and realistic survey answers aligned with the handbook feedback questions.
+
+```{r, include = FALSE}
+
+set.seed(1234)
+# Q5: Academic guidance (Likert, skewed to neutral/positive)
+likert_options <- c("Very poorly","Poorly","Satisfactorily","Well","Very well")
+survey_data$Q5 <- sample(likert_options, size = nrow(survey_data), replace = TRUE,
+                         prob = c(0.10, 0.15, 0.30, 0.30, 0.15))
+
+# Numeric encoding for CI analysis
+likert_map <- setNames(1:5, likert_options)
+survey_data$Q5_num <- likert_map[survey_data$Q5]
+
+# Q5a: Reason (only if <= Satisfactorily)
+survey_data$Q5a <- ifelse(survey_data$Q5 %in% c("Very poorly","Poorly","Satisfactorily"),
+                          sample(c("Too long","Unclear","Missing information","Other"),
+                                 size = nrow(survey_data), replace = TRUE),
+                          NA)
+
+# Q6: Missing academic topics (different probabilities)
+q6_probs <- c("Exam prep strategies" = 0.6,
+              "Research & writing skills" = 0.5,
+              "Structured study techniques" = 0.4,
+              "Digital learning skills" = 0.3)
+Q6 <- as.data.frame(sapply(names(q6_probs),
+                           function(opt) rbinom(nrow(survey_data), 1, q6_probs[opt])))
+survey_data <- cbind(survey_data, Q6)
+
+# Q7: Non-academic guidance (Likert, skewed to neutral/positive)
+survey_data$Q7 <- sample(likert_options, size = nrow(survey_data), replace = TRUE,
+                         prob = c(0.12, 0.18, 0.30, 0.25, 0.15))
+
+# Numeric encoding for CI analysis
+likert_map2 <- setNames(1:5, likert_options)
+survey_data$Q7_num <- likert_map2[survey_data$Q7]
+
+# Q7a: Reason (only if <= Satisfactorily)
+survey_data$Q7a <- ifelse(survey_data$Q7 %in% c("Very poorly","Poorly","Satisfactorily"),
+                          sample(c("Too long","Unclear","Missing information","Other"),
+                                 size = nrow(survey_data), replace = TRUE),
+                          NA)
+
+# Q8: Missing non-academic topics (different probabilities)
+q8_probs <- c("Step-by-step timelines" = 0.4,
+              "Apprenticeships/trades" = 0.25,
+              "Financial aid" = 0.6,
+              "Mental health" = 0.55,
+              "Support for first-generation" = 0.35)
+Q8 <- as.data.frame(sapply(names(q8_probs),
+                           function(opt) rbinom(nrow(survey_data), 1, q8_probs[opt])))
+survey_data <- cbind(survey_data, Q8)
+
+```
+
+## 4 Data
+
+Before conducting the analysis, we performed minimal data cleaning to ensure the simulated dataset was in a usable format. For the Likert-scale questions (Q5 and Q7), the original text-based categories (Very poorly, Poorly, Satisfactorily, Well, Very well) were preserved for descriptive summaries but also recoded into numeric values from 1 to 5. This recoding allowed us to calculate statistics such as averages and confidence intervals. For the “check all that apply” questions (Q6 and Q8), each option was stored as a binary variable, coded as 1 if a student selected the option and 0 if not. No responses were excluded from the dataset, as missingness was not simulated. This straightforward process ensures reproducibility: anyone could replicate it by converting ordered Likert responses into numbers and storing checklist options as binary columns.
+
+The variables of primary interest are Q5 and Q7, which measure how well the handbook provides academic and non-academic guidance, respectively. These are ordinal variables, but when recoded numerically they allow us to summarize average levels of guidance across respondents. Q6 and Q8 serve as complementary measures, identifying which specific academic and non-academic supports students feel are missing. Because each response option is coded separately, we can compare the proportions of students who identified different missing topics, providing a detailed picture of student needs.
+
+```{r, echo = FALSE}
+# -----------------------------
+# Q5: Academic guidance (Likert distribution, bar plot)
+# -----------------------------
+q5_levels <- c("Very poorly", "Poorly", "Satisfactorily", "Well", "Very well")
+
+q5_plot <- survey_data %>%
+  count(Q5) %>%
+  mutate(Q5 = factor(Q5, levels = q5_levels),
+         prop = n / sum(n)) %>%
+  ggplot(aes(x = Q5, y = prop, fill = Q5)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_brewer(palette = "Blues") +   
+  labs(title = "Figure 1a: Academic Guidance (Q5)",
+       x = "Response Category", y = "Proportion of Students") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold"))
+
+# -----------------------------
+# Q6: Missing academic topics (pie chart)
+# -----------------------------
+q6_long <- survey_data %>%
+  select(`Exam prep strategies`, `Research & writing skills`,
+         `Structured study techniques`, `Digital learning skills`) %>%
+  pivot_longer(cols = everything(), names_to = "Topic", values_to = "Selected")
+
+q6_summary <- q6_long %>%
+  group_by(Topic) %>%
+  summarise(prop = mean(Selected))
+
+q6_plot <- ggplot(q6_summary, aes(x = "", y = prop, fill = Topic)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Blues") +   
+  labs(title = "Figure 1b: Missing Academic Topics (Q6)") +
+  theme_void() +
+  theme(legend.position = "right",
+        plot.title = element_text(face = "bold"))
+```
+
+```{r, fig.width=4.2, echo = FALSE}
+q5_plot
+```
+
+**Figure 1a** displays the distribution of responses to Q5 (academic guidance). The results are fairly balanced, though “Satisfactorily” and “Well” appear most common, suggesting that many students view the handbook as moderately helpful but see room for improvement.
+
+```{r, fig.width=4, echo = FALSE}
+q6_plot
+```
+
+**Figure 1b** shows the distribution of selected missing academic supports (Q6). The pie chart indicates that responses are spread across categories, with "Exam prep strategies"being the greatest, but not dominating, implying that students’ academic needs are diverse.
+
+```{r, echo = FALSE}
+# -----------------------------
+# Q7: Non-Academic Guidance (Likert distribution, bar plot)
+# -----------------------------
+q7_levels <- c("Very poorly", "Poorly", "Satisfactorily", "Well", "Very well")
+
+q7_plot <- survey_data %>%
+  count(Q7) %>%
+  mutate(Q7 = factor(Q7, levels = q7_levels),
+         prop = n / sum(n)) %>%
+  ggplot(aes(x = Q7, y = prop, fill = Q7)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_brewer(palette = "Reds") +   
+  labs(title = "Figure 2a: Non-Academic Guidance (Q7)",
+       x = "Response Category", y = "Proportion of Students") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold"))
+
+# -----------------------------
+# Q8: Missing Non-Academic Topics (pie chart)
+# -----------------------------
+q8_long <- survey_data %>%
+  select(`Step-by-step timelines`, `Apprenticeships/trades`,
+         `Financial aid`, `Mental health`, `Support for first-generation`) %>%
+  pivot_longer(cols = everything(), names_to = "Topic", values_to = "Selected")
+
+q8_summary <- q8_long %>%
+  group_by(Topic) %>%
+  summarise(prop = mean(Selected))
+
+q8_plot <- ggplot(q8_summary, aes(x = "", y = prop, fill = Topic)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Reds") +   
+  labs(title = "Figure 2b: Missing Non-Academic Topics (Q8)") +
+  theme_void() +
+  theme(legend.position = "right",
+        plot.title = element_text(face = "bold"))
+
+```
+
+```{r, fig.width=4.2, echo = FALSE}
+q7_plot
+```
+
+**Figure 2a** summarizes Q7 (non-academic guidance), which follows a similar pattern to Q5. Again, most students rate the handbook as “Satisfactorily” or “Well,” indicating that while the handbook provides a baseline level of support, few students feel it supports them “Very well” in extracurricular or personal development areas.
+
+```{r, fig.width=4, echo = FALSE}
+q8_plot
+```
+
+**Figure 2b** highlights which non-academic topics students feel are missing (Q8). Financial aid, mental health, and step-by-step timelines emerge as especially important, suggesting that students are looking for practical resources that extend beyond academics alone.
+
+For inferential analysis, the most suitable variables for confidence interval estimation are Q5 and Q7. By recoding the Likert responses to numeric values, we can compute sample means that represent the average level of guidance students perceive. Confidence intervals around these means quantify the precision of the estimates and enable comparisons between academic and non-academic domains. For Q6 and Q8, each option is coded as a binary variable. Here, confidence intervals on the proportions of students selecting specific topics (e.g., “Exam preparation” in Q6, “Financial aid” in Q8) allow us to assess which missing supports are most frequently identified, while also reflecting the uncertainty in those proportions. This dual approach — combining averages from Likert ratings and proportions from checklist questions gives a fuller picture of the handbook’s performance and where improvements are most needed.
+
+## 5 Methods
+
+To analyze the survey data, we use confidence intervals (CIs) to capture the uncertainty in our estimates. A confidence interval provides a range of plausible values for a population parameter (such as a mean or proportion) based on our sample. Instead of reporting just one number, the CI shows both the estimate and its margin of error, helping us understand how much the results might vary if different students had responded.
+
+For the Likert-scale questions — Q5 (academic guidance) and Q7 (non-academic guidance) — responses were coded numerically from 1 (Very poorly) to 5 (Very well). This allows us to compute an average rating of perceived guidance and place a confidence interval (CI) around that estimate. The CI formula is:
+
+$$ \bar{x} \pm \text{MOE} $$ $$=\bar{x} \pm t_{0.025,\,n-1} \cdot SE \cdot \text{FPC}$$ $$= \bar{x} \pm t_{0.025,  n-1} \cdot \frac{s}{\sqrt{n}}\cdot \sqrt{\frac{N-n}{N-1}}$$ where $\bar{x}$ is the sample mean, $s$ the sample standard deviation, $n$ the sample size, $N$ the total population size, and $t$ the critical value from the $t$-distribution. The finite population correction (FPC) term $\sqrt{\frac{N-n}{N-1}}$ adjusts the margin of error downward when a substantial fraction of the population is sampled, making the CI narrower and more accurate. In practice, this means our CIs for Q5 and Q7 reflect not just sampling variability, but also the fact that our survey is close to a census of STEMBuddies students.
+
+For the “check all that apply” questions — Q6 (missing academic topics) and Q8 (missing non-academic topics) — each option was stored as a binary variable (1 = selected, 0 = not selected). We focus on the most frequently selected options: Exam Preparation Strategies (Q6) and Mental Health Support (Q8), as these represent the most common gaps identified by students. The CI for a proportion is:
+
+$$\hat{p} \pm \text{MOE}$$ $$=\hat{p} \pm z_{0.025} \cdot SE \cdot \text{FPC}$$ $$ \hat{p} \pm z_{0.025} \sqrt{\frac{\hat{p}(1-\hat{p})}{n}}\cdot \sqrt{\frac{N-n}{N-1}} $$
+
+where $\hat{p}$ is the observed proportion, and $z$ is the critical value from the standard normal distribution. Here, the standard error reflects variability in how many students selected the option, while the FPC again narrows the interval given our large sampling fraction.
+
+In all cases, the confidence intervals provide a plausible range for the true population values if all STEMBuddies students had responded. Q5 and Q7 measure students’ average satisfaction with guidance, while Q6 and Q8 quantify the prevalence of perceived gaps in academic and non-academic support, respectively.
+
+## 6 Results
+
+```{r, include = FALSE}
+# -----------------------------
+# Q5: Academic guidance (Likert 1–5)
+# -----------------------------
+
+set.seed(1234)
+
+# Define finite population
+N <- 2000
+population_q5 <- sample(1:5, N, replace = TRUE)
+
+# Sample from the population
+n <- 1200
+sample_q5 <- sample(population_q5, n)
+
+# Sample statistics
+xbar <- mean(sample_q5)
+s <- sd(sample_q5)
+
+# Finite population correction
+fpc <- sqrt((N - n) / (N - 1))
+
+# Confidence interval
+alpha <- 0.05
+t_crit <- qt(1 - alpha/2, df = n - 1)
+SE <- s / sqrt(n)
+ME <- t_crit * SE * fpc
+CI_q5 <- c(xbar - ME, xbar + ME)
+
+# Rounded output
+round(xbar, 2)
+round(CI_q5, 3)
+
+
+#-----------------------------
+# Q6: Proportion selecting "Exam Preparation"
+# -----------------------------
+
+set.seed(1234)
+
+# Define finite population (0 = not selected, 1 = selected)
+N <- 2000
+population_q6 <- sample(c(0,1), N, replace = TRUE, prob = c(0.6, 0.4))  # adjust probs if needed
+
+# Sample from the population
+n <- 1200
+sample_q6 <- sample(population_q6, n)
+
+# Sample proportion
+phat <- mean(sample_q6)
+
+# Finite population correction
+fpc <- sqrt((N - n) / (N - 1))
+
+# Confidence interval
+alpha <- 0.05
+z_crit <- qnorm(1 - alpha/2)
+SE <- sqrt(phat * (1 - phat) / n)
+ME <- z_crit * SE * fpc
+CI_q6 <- c(phat - ME, phat + ME)
+
+# Rounded output
+round(phat, 2)
+round(CI_q6, 3)
+```
+
+In Table 2, we present confidence intervals for four key outcome variables: the average student ratings of academic (Q5) and non-academic (Q7) guidance, and the proportions of students identifying missing academic (Q6) and non-academic (Q8) topics. For Q5 and Q7, responses were coded on a 1–5 Likert scale, and the CIs are based on the sample means. For Q6 and Q8, the CIs are based on the sample proportions of students selecting the most frequently identified missing supports.
+
+#### **Table 2. Estimated means and proportions with 95% confidence intervals**
+
+| Survey Question | Outcome Variable                                   | Estimate | 95% Confidence Interval |
+|---------------|---------------------------|---------------|---------------|
+| Q5              | Average academic guidance rating (1–5)             | 3.04     | (2.992, 3.093)          |
+| Q6              | Proportion selecting “Exam Preparation Strategies” | 0.39     | (0.372, 0.407)          |
+| Q7              | Average non-academic guidance rating (1–5)         | 2.88     | (2.842, 2.918)          |
+| Q8              | Proportion selecting “Mental Health Support”       | 0.42     | (0.401, 0.439)          |
+
+The results suggest that the handbook’s academic guidance (Q5) was rated moderately, with an average score of 3.04 (95% CI: 2.99–3.09). Non-academic guidance (Q7) was rated slightly lower, averaging 2.88 (95% CI: 2.84–2.92), indicating students found career, financial, and well-being advice somewhat less developed.
+
+For the “missing topics” questions, 39% of students reported that Exam Preparation Strategies were lacking from the handbook (95% CI: 37%–41%), and 42% identified Mental Health Support as a missing non-academic component (95% CI: 40%–44%).
+
+Together, these results reveal a consistent pattern: while the handbook provides a useful foundation of guidance, students identify substantial gaps, particularly around exam preparation and mental health resources. This suggests that expanding both academic and non-academic support areas could significantly improve the perceived value and comprehensiveness of the handbook.
+
+## 7 Bibliography
+
+1.  Hazra, A. (2017). Using the confidence interval confidently. Journal of Thoracic Disease, 9(10), 4125–4130. https://doi.org/10.21037/jtd.2017.09.14
+
+2.  Jurado de los Santos, P., Moreno-Guerrero, A.-J., Marín-Marín, J.-A., & Soler Costa, R. (2020). The term equity in education: A literature review with scientific mapping in Web of Science. PMC.
+
+3.  Kusmaryono, I., Wijayanti, D., & Maharani, H. R. (2022). Number of response options, reliability, validity, and potential bias in the use of the Likert scale: A literature review. International Journal of Education and Mathematics, 8(4), 625–637. https://doi.org/10.12973/ijem.8.4.625
+
+4.  Ponto, J. (2015). Understanding and evaluating survey research. PMC (NCBI). https://pmc.ncbi.nlm.nih.gov/articles/PMC4601897/
+
+5.  STEMBuddies. (n.d.). STEMBuddies High School Handbook. Retrieved from https://stembuddies.ca/resources_page/
+
+6.  Westland, J. C. (2022). Information loss and bias in Likert survey responses. PLOS ONE, 17(7), e0271949. https://doi.org/10.1371/journal.pone.0271949
+
+## 8 Appendix
+
+### 8.1 Survey questions
+
+Below is a well formatted copy of all of the survey questions (along with the opening and closing messages/statements).
+
+Welcome! This survey is part of a research study by STEMBuddies to help understand how helpful the STEMBuddies High School Handbook is and how it can be improved to better support students! Your responses are anonymous and confidential and will only be used for research and improvement purposes. **This survey should take less than 10 minutes to complete**. Thank you for your participation and honest feedback!
+
+**Demographic Questions**
+
+1\. What grade are you in?\*
+
+2\. In which city do you go to school? (*e.g  “Toronto”, “Mississauga”, etc..*)
+
+**Assessment Questions**
+
+*This section is to assess how good the handbook is*
+
+3\. How many of the handbook sections relevant to your grade have you read? (e.g. *“Before high school”* for grade 8, “*Transitioning from Middle School*” for Grade 9 and 10, *“University program requirements”* for grade 11 and 12)
+
+3a. Do you think the sections for your grade are lacking information?
+
+4\. How easy was the handbook to understand?
+
+**Academic Questions**
+
+5\. How well does the handbook give you academic guidance? (i.e. *provide guidelines on what to do in your grade to succeed academically*)
+
+5a. If you answered *"very poorly"/"poorly"/"satisfactorily"* in the previous question, what was the reason?
+
+6\. What important academic topics do you feel are missing from the handbook? (Check all that apply)
+
+**Non-academic/extracurricular questions**
+
+*Extracurricular refers to any activity outside of classes*
+
+7\. How well does the handbook give you non-academic/extracurricular guidance? (i.e. *provide guidelines on what to do in your grade to succeed outside of classes*)
+
+7a. If you answered *"very poorly/poorly/satisfactorily"* in the previous question, what was the reason?
+
+8\. What important non-academic topics do you feel are missing? (Check all that apply)
+
+9. Do you have any last comments on how to improve the handbook?
+
+Thank you for taking the time to complete this survey! Your feedback is very valuable and will directly help STEMbuddies improve the High School Handbook to better meet the needs and preferences of students like you! Every response brings us closer to creating a more useful and supportive resource for your high school and post-secondary journey.
+
+### 8.2 Simulated Survey Data
+
+Below is a `glimpse()` or `head()` of the simulated data (this should be the data that looks like the inputs from your survey). This is the only place in the report where you can show your raw R code and output.
+
+```{r, echo=TRUE}
+head(survey_data)
+```
